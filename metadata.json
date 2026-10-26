@@ -1,0 +1,6 @@
+{
+  "name": "LunaPeri - Pelacak Menstruasi & Siklus Bulanan",
+  "description": "Aplikasi pelacak siklus menstruasi bulanan interaktif dengan maskot animasi Luna, prediksi ovulasi dan masa subur, jurnal gejala harian, serta panduan kesehatan wanita.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
