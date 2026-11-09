@@ -23,26 +23,30 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   logs,
   settings
 }) => {
+  const safeCycles = Array.isArray(cycles) ? cycles : [];
+  const safeLogs = logs || {};
+  const safeSettings = settings || { cycleLength: 28, periodLength: 5, lutealLength: 14 };
+
   // Compute average cycle length and period length
-  const totalCycles = cycles.length;
+  const totalCycles = safeCycles.length;
   const avgCycleLength = totalCycles > 0
-    ? Math.round(cycles.reduce((acc, c) => acc + (c.cycleLength || settings.cycleLength), 0) / totalCycles)
-    : settings.cycleLength;
+    ? Math.round(safeCycles.reduce((acc, c) => acc + (c?.cycleLength || safeSettings.cycleLength || 28), 0) / totalCycles)
+    : safeSettings.cycleLength || 28;
 
   const avgPeriodLength = totalCycles > 0
-    ? Math.round(cycles.reduce((acc, c) => acc + (c.periodLength || settings.periodLength), 0) / totalCycles)
-    : settings.periodLength;
+    ? Math.round(safeCycles.reduce((acc, c) => acc + (c?.periodLength || safeSettings.periodLength || 5), 0) / totalCycles)
+    : safeSettings.periodLength || 5;
 
   // Regularity score (standard deviation of cycle lengths)
-  const cycleLengths = cycles.map((c) => c.cycleLength || settings.cycleLength);
+  const cycleLengths = safeCycles.map((c) => c?.cycleLength || safeSettings.cycleLength || 28);
   const variance = cycleLengths.reduce((acc, val) => acc + Math.pow(val - avgCycleLength, 2), 0) / (totalCycles || 1);
   const stdDev = Math.sqrt(variance);
   const regularity = stdDev <= 2 ? 'Sangat Teratur' : stdDev <= 4 ? 'Cukup Teratur' : 'Bervariasi';
 
   // Aggregate symptoms
   const symptomCounts: Record<string, number> = {};
-  Object.values(logs).forEach((log) => {
-    log.symptoms?.forEach((sym) => {
+  Object.values(safeLogs).forEach((log) => {
+    log?.symptoms?.forEach((sym) => {
       symptomCounts[sym] = (symptomCounts[sym] || 0) + 1;
     });
   });

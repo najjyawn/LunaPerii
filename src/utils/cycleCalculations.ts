@@ -6,19 +6,38 @@ import {
   PhaseInfo 
 } from '../types/cycle';
 
-export function formatDateToISO(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+export function formatDateToISO(date: Date = new Date()): string {
+  try {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  } catch {
+    const now = new Date();
+    return `${now.getFullYear()}-01-01`;
+  }
 }
 
-export function parseISODate(isoString: string): Date {
-  const [year, month, day] = isoString.split('-').map(Number);
+export function parseISODate(isoString?: string | null): Date {
+  if (!isoString || typeof isoString !== 'string') {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+  const parts = isoString.split('-');
+  if (parts.length < 3) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+  const year = parseInt(parts[0], 10) || new Date().getFullYear();
+  const month = parseInt(parts[1], 10) || (new Date().getMonth() + 1);
+  const day = parseInt(parts[2], 10) || new Date().getDate();
   return new Date(year, month - 1, day, 12, 0, 0); // noon to avoid timezone daylight shifts
 }
 
 export function getDaysDiff(d1: Date, d2: Date): number {
+  if (!d1 || !d2 || isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
   const t1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate()).getTime();
   const t2 = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate()).getTime();
   return Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
@@ -37,43 +56,125 @@ export const INDONESIAN_MONTHS = [
 
 export const INDONESIAN_DAYS_SHORT = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
-export function formatIndonesianDate(isoString: string, includeYear = true): string {
+export function formatIndonesianDate(isoString?: string | null, includeYear = true): string {
+  if (!isoString) return '';
   const date = parseISODate(isoString);
   const day = date.getDate();
-  const month = INDONESIAN_MONTHS[date.getMonth()];
+  const month = INDONESIAN_MONTHS[date.getMonth()] || '';
   const year = date.getFullYear();
   return includeYear ? `${day} ${month} ${year}` : `${day} ${month}`;
 }
 
-export function formatShortDate(isoString: string): string {
+export function formatShortDate(isoString?: string | null): string {
+  if (!isoString) return '';
   const date = parseISODate(isoString);
   const day = date.getDate();
-  const month = INDONESIAN_MONTHS[date.getMonth()].slice(0, 3);
+  const month = (INDONESIAN_MONTHS[date.getMonth()] || '').slice(0, 3);
   return `${day} ${month}`;
+}
+
+export const INITIAL_SETTINGS: CycleSettings = {
+  userName: 'Bella',
+  cycleLength: 28,
+  periodLength: 5,
+  lutealLength: 14,
+  mascotAccessory: 'flower',
+  discreetMode: false
+};
+
+export function getInitialCycles(): PeriodCycle[] {
+  const today = new Date();
+  const lastCycleStart = addDays(today, -11);
+  const cycle2Start = addDays(lastCycleStart, -28);
+  const cycle3Start = addDays(cycle2Start, -29);
+
+  return [
+    {
+      id: 'cycle-1',
+      startDate: formatDateToISO(lastCycleStart),
+      endDate: formatDateToISO(addDays(lastCycleStart, 4)),
+      cycleLength: 28,
+      periodLength: 5
+    },
+    {
+      id: 'cycle-2',
+      startDate: formatDateToISO(cycle2Start),
+      endDate: formatDateToISO(addDays(cycle2Start, 4)),
+      cycleLength: 28,
+      periodLength: 5
+    },
+    {
+      id: 'cycle-3',
+      startDate: formatDateToISO(cycle3Start),
+      endDate: formatDateToISO(addDays(cycle3Start, 5)),
+      cycleLength: 29,
+      periodLength: 6
+    }
+  ];
+}
+
+export function getInitialLogs(): Record<string, DailyLog> {
+  const today = new Date();
+  const logs: Record<string, DailyLog> = {};
+
+  const cycle1Start = addDays(today, -11);
+  const flows: ('heavy' | 'medium' | 'light' | 'spotting')[] = ['heavy', 'heavy', 'medium', 'light', 'spotting'];
+  flows.forEach((flow, i) => {
+    const dStr = formatDateToISO(addDays(cycle1Start, i));
+    logs[dStr] = {
+      date: dStr,
+      isPeriod: true,
+      flow,
+      moods: i < 2 ? ['crampy', 'tired', 'sensitive'] : ['calm'],
+      symptoms: i < 2 ? ['cramps', 'backache'] : ['fatigue'],
+      waterGlasses: 7,
+      notes: i === 0 ? 'Hari pertama, kram terasa di siang hari.' : 'Mulai membaik.'
+    };
+  });
+
+  const todayStr = formatDateToISO(today);
+  logs[todayStr] = {
+    date: todayStr,
+    isPeriod: false,
+    flow: 'none',
+    moods: ['happy', 'energetic'],
+    symptoms: [],
+    mucus: 'watery',
+    waterGlasses: 5,
+    notes: 'Merasa bersemangat hari ini!'
+  };
+
+  return logs;
 }
 
 /**
  * Calculates current cycle information based on last period start date and user settings
  */
 export function calculateCurrentPhase(
-  cycles: PeriodCycle[],
-  settings: CycleSettings,
+  cycles?: PeriodCycle[] | null,
+  settings?: CycleSettings | null,
   targetDate: Date = new Date()
 ): PhaseInfo {
-  // Sort cycles by startDate desc
-  const sortedCycles = [...cycles].sort((a, b) => 
-    parseISODate(b.startDate).getTime() - parseISODate(a.startDate).getTime()
+  const safeCycles = Array.isArray(cycles) && cycles.length > 0 ? cycles : getInitialCycles();
+  const safeSettings = settings && typeof settings === 'object' ? settings : INITIAL_SETTINGS;
+
+  // Sort cycles by startDate desc safely
+  const sortedCycles = [...safeCycles].sort((a, b) => 
+    parseISODate(b?.startDate).getTime() - parseISODate(a?.startDate).getTime()
   );
 
   const lastCycle = sortedCycles[0];
-  const lastStart = lastCycle ? parseISODate(lastCycle.startDate) : addDays(targetDate, -14);
-  const cycleLen = settings.cycleLength || 28;
-  const periodLen = settings.periodLength || 5;
-  const lutealLen = settings.lutealLength || 14;
+  const lastStart = (lastCycle && lastCycle.startDate) 
+    ? parseISODate(lastCycle.startDate) 
+    : addDays(targetDate, -14);
+
+  const cycleLen = Math.max(20, safeSettings.cycleLength || 28);
+  const periodLen = Math.max(1, safeSettings.periodLength || 5);
+  const lutealLen = Math.max(10, safeSettings.lutealLength || 14);
 
   const diffDays = getDaysDiff(lastStart, targetDate);
   const cycleDay = (diffDays >= 0 ? (diffDays % cycleLen) : ((diffDays % cycleLen) + cycleLen)) + 1;
-  const daysUntilNext = cycleLen - cycleDay + 1;
+  const daysUntilNext = Math.max(0, cycleLen - cycleDay + 1);
 
   // Ovulation typically occurs (cycleLength - lutealLength) days into the cycle
   const ovulationDay = Math.max(1, cycleLen - lutealLen);
@@ -157,19 +258,23 @@ export function calculateCurrentPhase(
  * Predicts next cycles for calendar & planning
  */
 export function predictUpcomingCycles(
-  lastCycleStart: string,
-  cycleLength: number,
-  periodLength: number,
+  lastCycleStart?: string | null,
+  cycleLength = 28,
+  periodLength = 5,
   lutealLength = 14,
   count = 6
 ) {
+  const safeCycleLength = Math.max(20, cycleLength || 28);
+  const safePeriodLength = Math.max(1, periodLength || 5);
+  const safeLutealLength = Math.max(10, lutealLength || 14);
+
   const predictions = [];
   let currentStart = parseISODate(lastCycleStart);
 
   for (let i = 1; i <= count; i++) {
-    const nextStart = addDays(currentStart, cycleLength * i);
-    const nextEnd = addDays(nextStart, periodLength - 1);
-    const ovulationDate = addDays(nextStart, cycleLength - lutealLength);
+    const nextStart = addDays(currentStart, safeCycleLength * i);
+    const nextEnd = addDays(nextStart, safePeriodLength - 1);
+    const ovulationDate = addDays(nextStart, safeCycleLength - safeLutealLength);
     const fertileStart = addDays(ovulationDate, -5);
     const fertileEnd = addDays(ovulationDate, 1);
 
@@ -186,9 +291,6 @@ export function predictUpcomingCycles(
   return predictions;
 }
 
-/**
- * Mascot dialogue variations based on user click
- */
 export const MASCOT_DIALOGUES: Record<CyclePhase, string[]> = {
   menstrual: [
     'Kamu hebat banget sudah melalui hari ini! Jangan lupa kompres perut hangat ya.',
@@ -224,84 +326,3 @@ export const MASCOT_DIALOGUES: Record<CyclePhase, string[]> = {
     'Tidur cukup 7-8 jam sangat membantu menstabilkan emosi hari ini 🌙'
   ]
 };
-
-/**
- * Initial sample data
- */
-export const INITIAL_SETTINGS: CycleSettings = {
-  userName: 'Bella',
-  cycleLength: 28,
-  periodLength: 5,
-  lutealLength: 14,
-  mascotAccessory: 'flower',
-  discreetMode: false
-};
-
-export function getInitialCycles(): PeriodCycle[] {
-  const today = new Date();
-  // Set last cycle start to 11 days ago so today is Day 12 (Follicular/Approaching fertile)
-  const lastCycleStart = addDays(today, -11);
-  const cycle2Start = addDays(lastCycleStart, -28);
-  const cycle3Start = addDays(cycle2Start, -29);
-
-  return [
-    {
-      id: 'cycle-1',
-      startDate: formatDateToISO(lastCycleStart),
-      endDate: formatDateToISO(addDays(lastCycleStart, 4)),
-      cycleLength: 28,
-      periodLength: 5
-    },
-    {
-      id: 'cycle-2',
-      startDate: formatDateToISO(cycle2Start),
-      endDate: formatDateToISO(addDays(cycle2Start, 4)),
-      cycleLength: 28,
-      periodLength: 5
-    },
-    {
-      id: 'cycle-3',
-      startDate: formatDateToISO(cycle3Start),
-      endDate: formatDateToISO(addDays(cycle3Start, 5)),
-      cycleLength: 29,
-      periodLength: 6
-    }
-  ];
-}
-
-export function getInitialLogs(): Record<string, DailyLog> {
-  const today = new Date();
-  const logs: Record<string, DailyLog> = {};
-
-  // Period days for cycle-1 (11 days ago for 5 days)
-  const cycle1Start = addDays(today, -11);
-  
-  const flows: ('heavy' | 'medium' | 'light' | 'spotting')[] = ['heavy', 'heavy', 'medium', 'light', 'spotting'];
-  flows.forEach((flow, i) => {
-    const dStr = formatDateToISO(addDays(cycle1Start, i));
-    logs[dStr] = {
-      date: dStr,
-      isPeriod: true,
-      flow,
-      moods: i < 2 ? ['crampy', 'tired', 'sensitive'] : ['calm'],
-      symptoms: i < 2 ? ['cramps', 'backache'] : ['fatigue'],
-      waterGlasses: 7,
-      notes: i === 0 ? 'Hari pertama, kram agak terasa di siang hari.' : 'Mulai berkurang dan membaik.'
-    };
-  });
-
-  // Today log
-  const todayStr = formatDateToISO(today);
-  logs[todayStr] = {
-    date: todayStr,
-    isPeriod: false,
-    flow: 'none',
-    moods: ['happy', 'energetic'],
-    symptoms: [],
-    mucus: 'watery',
-    waterGlasses: 5,
-    notes: 'Merasa segar dan bersemangat hari ini!'
-  };
-
-  return logs;
-}

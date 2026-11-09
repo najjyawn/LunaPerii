@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { 
   addDays, 
   formatDateToISO, 
+  formatIndonesianDate,
   parseISODate, 
   INDONESIAN_MONTHS, 
   INDONESIAN_DAYS_SHORT,
@@ -63,27 +64,35 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   // Find latest cycle for predictions
-  const sortedCycles = [...cycles].sort((a, b) => 
-    parseISODate(b.startDate).getTime() - parseISODate(a.startDate).getTime()
+  const safeCycles = Array.isArray(cycles) ? cycles : [];
+  const sortedCycles = [...safeCycles].sort((a, b) => 
+    parseISODate(b?.startDate).getTime() - parseISODate(a?.startDate).getTime()
   );
   const latestCycle = sortedCycles[0];
   const upcomingPredictions = latestCycle 
-    ? predictUpcomingCycles(latestCycle.startDate, settings.cycleLength, settings.periodLength, settings.lutealLength, 6)
+    ? predictUpcomingCycles(
+        latestCycle.startDate, 
+        settings?.cycleLength || 28, 
+        settings?.periodLength || 5, 
+        settings?.lutealLength || 14, 
+        6
+      )
     : [];
 
   const todayStr = formatDateToISO(new Date());
 
   // Function to classify date
   const getDateStatus = (iso: string) => {
-    const log = logs[iso];
+    const log = logs ? logs[iso] : undefined;
     const isLoggedPeriod = log?.isPeriod || (log?.flow && log.flow !== 'none');
 
     // Check if within actual logged cycles
     let isHistoricalPeriod = isLoggedPeriod;
     if (!isHistoricalPeriod) {
-      for (const c of cycles) {
+      for (const c of safeCycles) {
+        if (!c?.startDate) continue;
         const start = parseISODate(c.startDate);
-        const end = c.endDate ? parseISODate(c.endDate) : addDays(start, c.periodLength - 1);
+        const end = c.endDate ? parseISODate(c.endDate) : addDays(start, (c.periodLength || 5) - 1);
         const cur = parseISODate(iso);
         if (cur >= start && cur <= end) {
           isHistoricalPeriod = true;
@@ -271,12 +280,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div>
           <div className="text-xs font-semibold text-rose-500 mb-0.5">Detail Tanggal Terpilih:</div>
           <h3 className="text-base sm:text-lg font-bold text-slate-800">
-            {new Date(parseISODate(selectedDate)).toLocaleDateString('id-ID', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            })}
+            {formatIndonesianDate(selectedDate)}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
             {selectedStatus.isPeriod

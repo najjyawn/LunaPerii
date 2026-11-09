@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { 
   DailyLog, 
   PeriodCycle, 
-  CycleSettings, 
-  MascotAccessory 
+  CycleSettings 
 } from './types/cycle';
 import { 
   calculateCurrentPhase, 
@@ -28,26 +27,87 @@ import {
   Calendar as CalendarIcon, 
   Sparkles, 
   BarChart3, 
-  Smile, 
   Settings, 
   Droplet, 
-  Shield, 
   Eye, 
   EyeOff,
-  Flame,
-  Moon,
-  Info
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
-export default function App() {
-  // Navigation Tabs: 'home' | 'calendar' | 'analytics' | 'selfcare'
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('App ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  handleReset = () => {
+    try {
+      localStorage.removeItem('lunaperi_cycles');
+      localStorage.removeItem('lunaperi_logs');
+      localStorage.removeItem('lunaperi_settings');
+    } catch (e) {
+      console.error(e);
+    }
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-rose-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-rose-100">
+            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-500 mx-auto flex items-center justify-center text-2xl mb-4">
+              🌸
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 font-display mb-2">
+              Ups, Luna sedang merapikan data!
+            </h2>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              Terjadi sedikit gangguan saat memuat data siklus. Tekan tombol di bawah untuk menyegarkan data kembali normal.
+            </p>
+            <button
+              onClick={this.handleReset}
+              className="w-full py-3 px-4 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-semibold text-xs shadow-md shadow-rose-200 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Segarkan & Pulihkan LunaPeri</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function MainTrackerApp() {
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'analytics' | 'selfcare'>('home');
 
-  // Persistence State
+  // Persistence State with safe validation
   const [cycles, setCycles] = useState<PeriodCycle[]>(() => {
     try {
       const saved = localStorage.getItem('lunaperi_cycles');
-      return saved ? JSON.parse(saved) : getInitialCycles();
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      return getInitialCycles();
     } catch {
       return getInitialCycles();
     }
@@ -56,7 +116,9 @@ export default function App() {
   const [logs, setLogs] = useState<Record<string, DailyLog>>(() => {
     try {
       const saved = localStorage.getItem('lunaperi_logs');
-      return saved ? JSON.parse(saved) : getInitialLogs();
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+      return getInitialLogs();
     } catch {
       return getInitialLogs();
     }
@@ -65,13 +127,19 @@ export default function App() {
   const [settings, setSettings] = useState<CycleSettings>(() => {
     try {
       const saved = localStorage.getItem('lunaperi_settings');
-      return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...INITIAL_SETTINGS,
+          ...parsed
+        };
+      }
+      return INITIAL_SETTINGS;
     } catch {
       return INITIAL_SETTINGS;
     }
   });
 
-  // Selected date for inspection & modal
   const [selectedDate, setSelectedDate] = useState<string>(() => formatDateToISO(new Date()));
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -107,7 +175,7 @@ export default function App() {
 
   // Latest cycle start date
   const sortedCycles = [...cycles].sort(
-    (a, b) => parseISODate(b.startDate).getTime() - parseISODate(a.startDate).getTime()
+    (a, b) => parseISODate(b?.startDate).getTime() - parseISODate(a?.startDate).getTime()
   );
   const latestCycle = sortedCycles[0] || { startDate: formatDateToISO(new Date()) };
 
@@ -118,20 +186,17 @@ export default function App() {
       [updatedLog.date]: updatedLog
     }));
 
-    // If marked as period flow, ensure it reflects in cycle tracking
     if (updatedLog.isPeriod && (!latestCycle || updatedLog.date > latestCycle.startDate)) {
-      // Check if this date starts a new cycle
       const lastStart = parseISODate(latestCycle.startDate);
       const logDate = parseISODate(updatedLog.date);
       const diff = Math.round((logDate.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
 
-      // If gap is at least 15 days, record as new cycle start
       if (diff >= 15) {
         const newCycle: PeriodCycle = {
           id: `cycle-${Date.now()}`,
           startDate: updatedLog.date,
           cycleLength: diff,
-          periodLength: settings.periodLength
+          periodLength: settings.periodLength || 5
         };
         setCycles((prev) => [newCycle, ...prev]);
       }
@@ -149,14 +214,13 @@ export default function App() {
     const newCycle: PeriodCycle = {
       id: `cycle-${Date.now()}`,
       startDate: date,
-      endDate: formatDateToISO(addDays(newStart, settings.periodLength - 1)),
-      cycleLength: diffDays > 10 ? diffDays : settings.cycleLength,
-      periodLength: settings.periodLength
+      endDate: formatDateToISO(addDays(newStart, (settings.periodLength || 5) - 1)),
+      cycleLength: diffDays > 10 ? diffDays : settings.cycleLength || 28,
+      periodLength: settings.periodLength || 5
     };
 
     setCycles((prev) => [newCycle, ...prev]);
 
-    // Also mark in daily log
     setLogs((prev) => ({
       ...prev,
       [date]: {
@@ -181,14 +245,14 @@ export default function App() {
         copy[0] = {
           ...copy[0],
           startDate: newDate,
-          endDate: formatDateToISO(addDays(parseISODate(newDate), settings.periodLength - 1))
+          endDate: formatDateToISO(addDays(parseISODate(newDate), (settings.periodLength || 5) - 1))
         };
       } else {
         copy.push({
           id: `cycle-${Date.now()}`,
           startDate: newDate,
-          cycleLength: settings.cycleLength,
-          periodLength: settings.periodLength
+          cycleLength: settings.cycleLength || 28,
+          periodLength: settings.periodLength || 5
         });
       }
       return copy;
@@ -206,15 +270,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-rose-50/30 flex flex-col selection:bg-rose-200">
-      {/* =========================================================================
-          TOP BAR CONTRACT (Mandatory 3 Zones separated by gap-8)
-          Zone 1: Single text element wordmark in display face
-          Zone 2: 4-5 single-line clean text nav links
-          Zone 3: 1 primary action
-         ========================================================================= */}
+      {/* Top Bar Contract (3 zones) */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-rose-100/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-8">
-          {/* Zone 1: Single text element wordmark */}
+          {/* Zone 1: Wordmark */}
           <button
             onClick={() => setActiveTab('home')}
             className="text-xl font-bold tracking-tight text-rose-600 font-display whitespace-nowrap shrink-0 hover:text-rose-700 transition-colors flex items-center gap-2 cursor-pointer"
@@ -225,7 +284,7 @@ export default function App() {
             <span>LunaPeri</span>
           </button>
 
-          {/* Zone 2: 4-5 concise single-line nav links with hover underlines */}
+          {/* Zone 2: Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
             <button
               onClick={() => setActiveTab('home')}
@@ -270,7 +329,7 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Zone 3: 1 primary action */}
+          {/* Zone 3: 1 Primary Action */}
           <div className="flex items-center gap-2.5 shrink-0">
             {settings.discreetMode && (
               <button
@@ -294,7 +353,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Viewport Canvas */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12 space-y-6">
         {/* User Greeting Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 backdrop-blur-xs p-4 sm:p-5 rounded-3xl border border-rose-100 shadow-2xs">
@@ -326,12 +385,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* =========================================================================
-            TAB 1: BERANDA (DASHBOARD)
-           ========================================================================= */}
+        {/* TAB 1: BERANDA */}
         {activeTab === 'home' && (
           <div className="space-y-6">
-            {/* Split Grid: Interactive Mascot Luna + Animated Cycle Dial */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
               {/* Mascot Card */}
               <div className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm flex flex-col items-center justify-between relative overflow-hidden">
@@ -382,7 +438,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* 3 Quick Mini Metric Pills (Unboxed with clean typography) */}
                 <div className="w-full pt-4 border-t border-rose-50 flex items-center justify-around text-center text-xs text-slate-600">
                   <div>
                     <div className="font-bold text-slate-800 tabular-nums">
@@ -408,7 +463,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Horizontal 11-Day Date Scroller for Rapid Check */}
+            {/* Date Scroller */}
             <div className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm">
               <DateCarousel
                 selectedDate={selectedDate}
@@ -422,9 +477,8 @@ export default function App() {
               />
             </div>
 
-            {/* Daily Wellness Bento Cards */}
+            {/* Daily Wellness Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Daily Nutrition */}
               <div className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
@@ -435,11 +489,11 @@ export default function App() {
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                     {phaseInfo.phase === 'menstrual'
-                      ? 'Tingkatkan asupan zat besi seperti bayam, hati ayam, dan daging merah rendah lemak untuk mengganti darah yang keluar.'
+                      ? 'Tingkatkan asupan zat besi seperti bayam, kacang merah, dan hati untuk mengganti sel darah.'
                       : phaseInfo.phase === 'ovulation'
-                      ? 'Konsumsi antioksidan tinggi seperti buah beri dan kacang kenari untuk menjaga kualitas sel telur dan kilau kulit.'
+                      ? 'Konsumsi antioksidan tinggi seperti buah beri dan alpukat untuk mendukung kesuburan dan kilau kulit.'
                       : phaseInfo.phase === 'luteal'
-                      ? 'Kurangi konsumsi garam dan kopi berlebih agar terhindar dari perut kembung dan nyeri payudara.'
+                      ? 'Kurangi konsumsi garam dan kopi berlebih agar terhindar dari kembung dan nyeri payudara.'
                       : 'Protein nabati dan gandum utuh membantu metabolisme estrogen bekerja prima.'}
                   </p>
                 </div>
@@ -448,7 +502,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Water Intake Quick Logger */}
               <div className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="w-9 h-9 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3">
@@ -510,7 +563,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Movement & Exercise Guide */}
               <div className="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
@@ -525,8 +577,8 @@ export default function App() {
                       : phaseInfo.phase === 'ovulation'
                       ? 'Latihan kardio intensitas tinggi, HIIT, atau lari santai karena staminamu sedang berada di titik puncak!'
                       : phaseInfo.phase === 'luteal'
-                      ? 'Pilates, renang ringan, dan latihan kekuatan terukur tanpa memaksakan denyut jantung terlalu tinggi.'
-                      : 'Lari pagi, bersepeda santai, atau zumba bersama teman-teman.'}
+                      ? 'Pilates, renang ringan, dan latihan kekuatan terukur tanpa memaksakan denyut jantung.'
+                      : 'Lari pagi, bersepeda santai, atau senam bersama teman-teman.'}
                   </p>
                 </div>
                 <button
@@ -541,9 +593,7 @@ export default function App() {
           </div>
         )}
 
-        {/* =========================================================================
-            TAB 2: KALENDER SIKLUS
-           ========================================================================= */}
+        {/* TAB 2: KALENDER */}
         {activeTab === 'calendar' && (
           <CalendarView
             cycles={cycles}
@@ -559,9 +609,7 @@ export default function App() {
           />
         )}
 
-        {/* =========================================================================
-            TAB 3: ANALISIS SIKLUS
-           ========================================================================= */}
+        {/* TAB 3: ANALISIS */}
         {activeTab === 'analytics' && (
           <AnalyticsView
             cycles={cycles}
@@ -570,18 +618,13 @@ export default function App() {
           />
         )}
 
-        {/* =========================================================================
-            TAB 4: TIPS & SELF-CARE
-           ========================================================================= */}
+        {/* TAB 4: SELF-CARE */}
         {activeTab === 'selfcare' && (
           <SelfCareView />
         )}
       </main>
 
-      {/* =========================================================================
-          FIXED MOBILE BOTTOM NAVIGATION (Pattern 1 from mobile touch reference)
-          Height: 64px, touch hitboxes >= 44px
-         ========================================================================= */}
+      {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-rose-100 shadow-lg px-2">
         <div className="grid grid-cols-4 items-center h-16">
           <button
@@ -646,5 +689,13 @@ export default function App() {
         onUpdateLatestPeriodDate={handleUpdateLatestPeriodDate}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <MainTrackerApp />
+    </ErrorBoundary>
   );
 }

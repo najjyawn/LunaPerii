@@ -282,7 +282,7 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
           />
 
           {/* Eyes (Open vs Blinking vs Happy Closed) */}
-          {isBlinking || phase === 'menstrual' && isHappyJump ? (
+          {isBlinking || (phase === 'menstrual' && isHappyJump) ? (
             // Curved closed peaceful/happy eyes
             <g stroke="#374151" strokeWidth="3.5" strokeLinecap="round" fill="none">
               <path d="M 62 108 Q 74 116 84 108" />

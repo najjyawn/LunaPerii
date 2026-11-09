@@ -51,9 +51,9 @@ export const DateCarousel: React.FC<DateCarouselProps> = ({
           const isToday = todayISO === iso;
           const dayName = INDONESIAN_DAYS_SHORT[dateObj.getDay()];
           const dateNum = dateObj.getDate();
-          const log = logs[iso];
+          const log = logs ? logs[iso] : undefined;
           const hasPeriod = log?.isPeriod || (log?.flow && log.flow !== 'none');
-          const hasSymptoms = log && ((log.moods?.length > 0) || (log.symptoms?.length > 0));
+          const hasSymptoms = log && ((log.moods?.length || 0) > 0 || (log.symptoms?.length || 0) > 0);
 
           return (
             <button

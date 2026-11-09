@@ -19,16 +19,19 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
     daysUntilOvulation
   } = phaseInfo;
 
+  const safeTotal = Math.max(1, totalCycleDays || 28);
+  const safeDay = Math.min(safeTotal, Math.max(1, dayInCycle || 1));
+
   // Arc math for SVG ring
   const radius = 120;
   const strokeWidth = 14;
   const normalizedRadius = radius - strokeWidth / 2;
   const circumference = normalizedRadius * 2 * Math.PI;
-  const progressRatio = Math.min(1, Math.max(0, dayInCycle / totalCycleDays));
+  const progressRatio = Math.min(1, Math.max(0, safeDay / safeTotal));
   const strokeDashoffset = circumference - progressRatio * circumference;
 
   // Current angle for indicator dot
-  const currentAngle = (dayInCycle / totalCycleDays) * 360 - 90;
+  const currentAngle = (safeDay / safeTotal) * 360 - 90;
   const rad = (currentAngle * Math.PI) / 180;
   const dotX = 140 + (radius - strokeWidth / 2) * Math.cos(rad);
   const dotY = 140 + (radius - strokeWidth / 2) * Math.sin(rad);
