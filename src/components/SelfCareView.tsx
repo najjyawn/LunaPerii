@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Heart, 
   Wind, 
   Coffee, 
   Moon, 
-  Sparkles, 
   Play, 
   Pause, 
   RotateCcw,
-  CheckCircle2,
-  Smile
+  CheckCircle2
 } from 'lucide-react';
 
 export const SelfCareView: React.FC = () => {
@@ -79,6 +75,7 @@ export const SelfCareView: React.FC = () => {
   };
 
   const instructions = getBreathInstructions();
+  const transitionDuration = breathPhase === 'inhale' ? 4 : breathPhase === 'hold' ? 7 : 8;
 
   return (
     <div className="space-y-6">
@@ -100,28 +97,21 @@ export const SelfCareView: React.FC = () => {
           {/* Animated Breathing Circle */}
           <div className="relative my-8 flex items-center justify-center">
             {/* Outer animated halo */}
-            <motion.div
-              animate={{
-                scale: isBreathingActive ? instructions.scale : 1,
-                opacity: isBreathingActive ? [0.4, 0.7, 0.4] : 0.3
+            <div
+              style={{
+                transform: `scale(${isBreathingActive ? instructions.scale : 1})`,
+                transition: `transform ${transitionDuration}s ease-in-out`
               }}
-              transition={{
-                duration: breathPhase === 'inhale' ? 4 : breathPhase === 'hold' ? 7 : 8,
-                ease: 'easeInOut'
-              }}
-              className="absolute w-52 h-52 sm:w-60 sm:h-60 rounded-full bg-rose-200 blur-xl pointer-events-none"
+              className="absolute w-52 h-52 sm:w-60 sm:h-60 rounded-full bg-rose-200 blur-xl pointer-events-none opacity-40"
             />
 
             {/* Central circle */}
-            <motion.div
-              animate={{
-                scale: isBreathingActive ? instructions.scale : 1
+            <div
+              style={{
+                transform: `scale(${isBreathingActive ? instructions.scale : 1})`,
+                transition: `transform ${transitionDuration}s ease-in-out, background-color 0.5s ease`
               }}
-              transition={{
-                duration: breathPhase === 'inhale' ? 4 : breathPhase === 'hold' ? 7 : 8,
-                ease: 'easeInOut'
-              }}
-              className={`w-40 h-40 sm:w-48 sm:h-48 rounded-full shadow-lg flex flex-col items-center justify-center transition-colors duration-700 z-10 ${
+              className={`w-40 h-40 sm:w-48 sm:h-48 rounded-full shadow-lg flex flex-col items-center justify-center z-10 ${
                 isBreathingActive ? instructions.color : 'bg-rose-500 text-white'
               }`}
             >
@@ -131,7 +121,7 @@ export const SelfCareView: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider mt-1">
                 {isBreathingActive ? instructions.title : 'Mulai Napas'}
               </span>
-            </motion.div>
+            </div>
           </div>
 
           <p className="text-xs font-medium text-slate-600 min-h-[36px] flex items-center justify-center">

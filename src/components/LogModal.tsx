@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
 import { 
   DailyLog, 
   FlowIntensity, 
@@ -13,14 +11,12 @@ import {
   X, 
   Heart, 
   Droplet, 
-  Smile, 
-  Activity, 
-  Coffee, 
   Pill, 
   Check, 
   Sparkles,
   FileText
 } from 'lucide-react';
+import { triggerConfetti } from '../utils/confetti';
 
 interface LogModalProps {
   isOpen: boolean;
@@ -139,24 +135,14 @@ export const LogModal: React.FC<LogModalProps> = ({
     };
 
     onSaveLog(updatedLog);
-
-    confetti({
-      particleCount: 25,
-      spread: 60,
-      origin: { y: 0.8 },
-      colors: ['#f43f5e', '#fda4af', '#f472b6', '#fed7aa']
-    });
-
+    triggerConfetti(0.5, 0.7);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs">
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 50 }}
-        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden border border-rose-100"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200">
+      <div
+        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden border border-rose-100 transform transition-all duration-300"
       >
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
@@ -302,7 +288,7 @@ export const LogModal: React.FC<LogModalProps> = ({
             </div>
           </div>
 
-          {/* Section 5: Cairan Serviks (Subur Check) */}
+          {/* Section 5: Cairan Serviks */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
               4. Karakteristik Cairan Serviks (Opsional)
@@ -395,7 +381,7 @@ export const LogModal: React.FC<LogModalProps> = ({
             />
           </div>
 
-          {/* Sticky footer submit button inside modal */}
+          {/* Submit button */}
           <div className="pt-2">
             <button
               type="submit"
@@ -406,7 +392,7 @@ export const LogModal: React.FC<LogModalProps> = ({
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };

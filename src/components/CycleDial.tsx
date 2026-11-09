@@ -1,7 +1,6 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { PhaseInfo } from '../types/cycle';
-import { Sparkles, Calendar, Heart } from 'lucide-react';
+import { Sparkles, Heart } from 'lucide-react';
 
 interface CycleDialProps {
   phaseInfo: PhaseInfo;
@@ -11,8 +10,6 @@ interface CycleDialProps {
 export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal }) => {
   const {
     phase,
-    title,
-    subtitle,
     dayInCycle,
     totalCycleDays,
     daysUntilNextPeriod,
@@ -75,7 +72,7 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
             fill="transparent"
             stroke="#fda4af"
             strokeWidth={strokeWidth}
-            strokeDasharray={`${(5 / totalCycleDays) * circumference} ${circumference}`}
+            strokeDasharray={`${(5 / safeTotal) * circumference} ${circumference}`}
             strokeDashoffset="0"
             className="opacity-40"
           />
@@ -88,13 +85,13 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
             fill="transparent"
             stroke="#d8b4fe"
             strokeWidth={strokeWidth}
-            strokeDasharray={`${(6 / totalCycleDays) * circumference} ${circumference}`}
-            strokeDashoffset={-((9 / totalCycleDays) * circumference)}
+            strokeDasharray={`${(6 / safeTotal) * circumference} ${circumference}`}
+            strokeDashoffset={-((9 / safeTotal) * circumference)}
             className="opacity-40"
           />
 
-          {/* Active Progress Path */}
-          <motion.circle
+          {/* Active Progress Path with native CSS transition */}
+          <circle
             cx="140"
             cy="140"
             r={normalizedRadius}
@@ -102,11 +99,12 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
             stroke="url(#ringGradient)"
             strokeWidth={strokeWidth}
             strokeDasharray={`${circumference} ${circumference}`}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 1.2, ease: 'easeOut' }}
+            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
             filter="url(#dialShadow)"
+            style={{
+              transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
           />
 
           {/* Current Day Pointer Dot */}
@@ -118,6 +116,9 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
             stroke="#f43f5e"
             strokeWidth="3.5"
             className="drop-shadow-sm"
+            style={{
+              transition: 'all 0.6s ease-out'
+            }}
           />
         </svg>
 
@@ -129,11 +130,11 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
           </span>
 
           <div className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight font-display">
-            Hari {dayInCycle}
+            Hari {safeDay}
           </div>
 
           <div className="text-xs text-slate-500 font-medium mt-0.5">
-            dari {totalCycleDays} hari siklus
+            dari {safeTotal} hari siklus
           </div>
 
           <div className="mt-3 px-3 py-1 rounded-full bg-white/90 border border-rose-100 shadow-xs text-xs font-semibold text-slate-700">
@@ -152,7 +153,7 @@ export const CycleDial: React.FC<CycleDialProps> = ({ phaseInfo, onOpenLogModal 
       <div className="mt-4 flex items-center gap-2">
         <button
           onClick={onOpenLogModal}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-[0.98] text-white font-medium text-xs sm:text-sm shadow-md shadow-rose-200 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-medium text-xs sm:text-sm shadow-md shadow-rose-200 transition-all cursor-pointer"
         >
           <Heart className="w-4 h-4 fill-white text-white" />
           <span>Catat Kondisi Hari Ini</span>

@@ -14,6 +14,7 @@ import {
   parseISODate,
   addDays
 } from './utils/cycleCalculations';
+import { safeStorage } from './utils/safeStorage';
 import { MascotLuna } from './components/MascotLuna';
 import { CycleDial } from './components/CycleDial';
 import { DateCarousel } from './components/DateCarousel';
@@ -31,8 +32,7 @@ import {
   Droplet, 
   Eye, 
   EyeOff,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -59,13 +59,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   handleReset = () => {
-    try {
-      localStorage.removeItem('lunaperi_cycles');
-      localStorage.removeItem('lunaperi_logs');
-      localStorage.removeItem('lunaperi_settings');
-    } catch (e) {
-      console.error(e);
-    }
+    safeStorage.removeItem('lunaperi_cycles');
+    safeStorage.removeItem('lunaperi_logs');
+    safeStorage.removeItem('lunaperi_settings');
     window.location.reload();
   };
 
@@ -101,10 +97,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 function MainTrackerApp() {
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'analytics' | 'selfcare'>('home');
 
-  // Persistence State with safe validation
+  // Persistence State with safeStorage validation
   const [cycles, setCycles] = useState<PeriodCycle[]>(() => {
     try {
-      const saved = localStorage.getItem('lunaperi_cycles');
+      const saved = safeStorage.getItem('lunaperi_cycles');
       const parsed = saved ? JSON.parse(saved) : null;
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       return getInitialCycles();
@@ -115,7 +111,7 @@ function MainTrackerApp() {
 
   const [logs, setLogs] = useState<Record<string, DailyLog>>(() => {
     try {
-      const saved = localStorage.getItem('lunaperi_logs');
+      const saved = safeStorage.getItem('lunaperi_logs');
       const parsed = saved ? JSON.parse(saved) : null;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
       return getInitialLogs();
@@ -126,7 +122,7 @@ function MainTrackerApp() {
 
   const [settings, setSettings] = useState<CycleSettings>(() => {
     try {
-      const saved = localStorage.getItem('lunaperi_settings');
+      const saved = safeStorage.getItem('lunaperi_settings');
       const parsed = saved ? JSON.parse(saved) : null;
       if (parsed && typeof parsed === 'object') {
         return {
@@ -145,29 +141,17 @@ function MainTrackerApp() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isDiscreetTempOff, setIsDiscreetTempOff] = useState(false);
 
-  // Sync to localStorage
+  // Sync to safeStorage
   useEffect(() => {
-    try {
-      localStorage.setItem('lunaperi_cycles', JSON.stringify(cycles));
-    } catch (e) {
-      console.error('Failed to save cycles to storage', e);
-    }
+    safeStorage.setItem('lunaperi_cycles', JSON.stringify(cycles));
   }, [cycles]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('lunaperi_logs', JSON.stringify(logs));
-    } catch (e) {
-      console.error('Failed to save logs to storage', e);
-    }
+    safeStorage.setItem('lunaperi_logs', JSON.stringify(logs));
   }, [logs]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('lunaperi_settings', JSON.stringify(settings));
-    } catch (e) {
-      console.error('Failed to save settings to storage', e);
-    }
+    safeStorage.setItem('lunaperi_settings', JSON.stringify(settings));
   }, [settings]);
 
   // Current cycle phase calculation

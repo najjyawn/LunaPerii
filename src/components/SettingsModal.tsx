@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { CycleSettings, PeriodCycle } from '../types/cycle';
+import { CycleSettings } from '../types/cycle';
 import { X, Settings, Shield, RefreshCw, User, Calendar, Check } from 'lucide-react';
-import { formatDateToISO, formatIndonesianDate } from '../utils/cycleCalculations';
+import { formatIndonesianDate } from '../utils/cycleCalculations';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -51,12 +50,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-rose-100 flex flex-col max-h-[90vh]"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200">
+      <div
+        className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-rose-100 flex flex-col max-h-[90vh] transform transition-all duration-300"
       >
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
@@ -204,7 +200,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };

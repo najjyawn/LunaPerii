@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
 import { CyclePhase, MascotAccessory } from '../types/cycle';
 import { MASCOT_DIALOGUES } from '../utils/cycleCalculations';
 import { Heart, Sparkles, MessageCircleHeart } from 'lucide-react';
+import { triggerConfetti } from '../utils/confetti';
 
 interface MascotLunaProps {
   phase: CyclePhase;
@@ -52,17 +51,8 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
     };
     setFloatingHearts((prev) => [...prev.slice(-4), newHeart]);
 
-    // Mini confetti burst on click
-    confetti({
-      particleCount: 18,
-      spread: 45,
-      origin: {
-        x: e.clientX / window.innerWidth,
-        y: e.clientY / window.innerHeight
-      },
-      colors: ['#fb7185', '#f472b6', '#c084fc', '#fde047'],
-      disableForReducedMotion: true
-    });
+    // Native crash-proof confetti burst
+    triggerConfetti(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
   };
 
   // Phase color themes for Luna's body/aura
@@ -119,69 +109,44 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
   return (
     <div className="relative flex flex-col items-center select-none w-full max-w-sm mx-auto">
       {/* Speech Bubble */}
-      <AnimatePresence mode="wait">
-        {showSpeech && (
-          <motion.div
-            key={currentDialogueIndex + '-' + phase}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className="relative mb-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-rose-100 text-xs text-slate-700 max-w-[290px] text-center"
-          >
-            <div className="font-semibold text-rose-600 flex items-center justify-center gap-1.5 mb-0.5 text-[11px]">
-              <MessageCircleHeart className="w-3.5 h-3.5 text-rose-500 inline shrink-0" />
-              <span>{bodyColors.name} berkata:</span>
-            </div>
-            <p className="leading-relaxed font-medium">"{dialogues[currentDialogueIndex]}"</p>
-            {/* Speech pointer */}
-            <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-white"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showSpeech && (
+        <div
+          key={currentDialogueIndex + '-' + phase}
+          className="relative mb-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-rose-100 text-xs text-slate-700 max-w-[290px] text-center transition-all duration-300 transform scale-100 opacity-100"
+        >
+          <div className="font-semibold text-rose-600 flex items-center justify-center gap-1.5 mb-0.5 text-[11px]">
+            <MessageCircleHeart className="w-3.5 h-3.5 text-rose-500 inline shrink-0" />
+            <span>{bodyColors.name} berkata:</span>
+          </div>
+          <p className="leading-relaxed font-medium">"{dialogues[currentDialogueIndex]}"</p>
+          {/* Speech pointer */}
+          <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-white"></div>
+        </div>
+      )}
 
       {/* Floating hearts container */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-        <AnimatePresence>
-          {floatingHearts.map((heart) => (
-            <motion.div
-              key={heart.id}
-              initial={{ opacity: 1, scale: 0.5, y: 0 }}
-              animate={{ opacity: 0, scale: 1.4, y: -70 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              style={{ left: heart.x, top: heart.y }}
-              className="absolute text-rose-500 font-bold"
-            >
-              <Heart className="w-5 h-5 fill-rose-400 text-rose-500" />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {floatingHearts.map((heart) => (
+          <div
+            key={heart.id}
+            style={{ left: heart.x, top: heart.y }}
+            className="absolute text-rose-500 font-bold transition-all duration-700 transform -translate-y-12 opacity-0 scale-125"
+          >
+            <Heart className="w-5 h-5 fill-rose-400 text-rose-500" />
+          </div>
+        ))}
       </div>
 
       {/* Mascot Interactive Figure */}
-      <motion.div
+      <div
         onClick={handleMascotClick}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.93 }}
-        animate={
-          isHappyJump
-            ? {
-                y: [0, -24, 4, -8, 0],
-                rotate: [0, -4, 4, -2, 0],
-                scale: [1, 1.12, 0.96, 1.04, 1]
-              }
-            : {
-                y: [0, -6, 0],
-                rotate: [0, 0.8, -0.8, 0]
-              }
-        }
-        transition={
-          isHappyJump
-            ? { duration: 0.65, ease: 'easeInOut' }
-            : { duration: 3.2, repeat: Infinity, ease: 'easeInOut' }
-        }
-        className="cursor-pointer relative group flex flex-col items-center justify-center p-2"
+        style={{
+          transform: isHappyJump ? 'scale(1.1) translateY(-16px)' : undefined,
+          transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        }}
+        className={`cursor-pointer relative group flex flex-col items-center justify-center p-2 select-none hover:scale-105 active:scale-95 ${
+          !isHappyJump ? 'animate-gentle-float' : ''
+        }`}
         role="button"
         tabIndex={0}
         aria-label="Maskot Luna - Ketuk untuk berinteraksi"
@@ -194,7 +159,7 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
       >
         {/* Soft magical background aura */}
         <div
-          className={`absolute -inset-4 bg-gradient-radial ${bodyColors.aura} rounded-full blur-xl opacity-75 group-hover:opacity-100 transition-opacity`}
+          className={`absolute -inset-4 bg-gradient-to-r ${bodyColors.aura} rounded-full blur-xl opacity-75 group-hover:opacity-100 transition-opacity`}
         />
 
         {/* Luna SVG Character */}
@@ -212,11 +177,6 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
               <stop offset="0%" stopColor="#fde047" />
               <stop offset="100%" stopColor="#ca8a04" />
             </linearGradient>
-
-            <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
           </defs>
 
           {/* Sparkle stars when in ovulation/fertile */}
@@ -418,7 +378,7 @@ export const MascotLuna: React.FC<MascotLunaProps> = ({
           <Sparkles className="w-3 h-3 text-amber-500" />
           <span>Ketuk Luna untuk bicara</span>
         </div>
-      </motion.div>
+      </div>
 
       {/* Accessory Selector Bar */}
       {onAccessoryChange && (
